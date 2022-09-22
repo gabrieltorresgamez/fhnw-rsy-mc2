@@ -1,5 +1,5 @@
 ---
-title: "RSY: MC2"
+title: "RSY: MC1"
 subtitle: "Studiengang Data Science (HS2022), FHNW"
 author: "Jan Zwicky und Gabriel Torres"
 date: "Letzte Aktualisierungen: `r format(Sys.time(), '%B %d, %Y')`"
@@ -55,5 +55,42 @@ movies <- read.csv("ml-latest-small/movies.csv", sep = ",")
 links <- read.csv("ml-latest-small/links.csv", sep = ",")
 ratings <- read.csv("ml-latest-small/ratings.csv", sep = ",")
 tags <- read.csv("ml-latest-small/tags.csv", sep = ",")
+```
+
+Welches sind die am häufigsten geschauten Filme?
+```{r}
+movie_link <- full_join(movies,ratings,"movieId")
+```
+
+Welches sind die am häufigsten geschauten Filme?
+```{r}
+most_viewed <- movie_link%>%
+  group_by(title,movieId,genres)%>%
+  count()%>%
+  ungroup()%>%
+  filter(n == max(n))
+```
+Welches sind die am häufigsten geschauten Genres?
+
+```{r}
+genres_sep <-movies%>%
+  separate(genres,c("Action",
+"Adventure",
+"Animation",
+"Children's",
+"Comedy",
+"Crime",
+"Documentary",
+"Drama",
+"Fantasy",
+"Film-Noir",
+"Horror",
+"Musical",
+"Mystery",
+"Romance",
+"Sci-Fi",
+"Thriller",
+"War",
+"Western"))
 ```
 
