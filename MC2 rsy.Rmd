@@ -1,0 +1,66 @@
+---
+title: "1Da: Cross-Selling Challenge"
+subtitle: "Studiengang Data Science (HS2021), FHNW"
+author: "Jan Zwicky und David Dedic"
+date: "Letzte Aktualisierungen: `r format(Sys.time(), '%B %d, %Y')`"
+output:
+  bookdown::html_document2:
+      code_folding: hide
+      toc: true
+      toc_depth: 3
+      toc_float: true
+      number_sections: true
+editor_options: 
+  chunk_output_type: console
+---
+<style>
+#TOC {
+  background-color: #F5F5F5;
+  font-size: 16px;
+}
+#header{
+  color: #708090;
+  background-color: #F5F5F5;
+  font-size: 30px;
+}
+body{
+  color: #708090;
+  background-color:#F5F5F5;
+}
+</style>
+
+# Aufgabenstellung
+Eine tschechische Bank möchte ihre Dienstleistungen für Privatkunden verbessern und "interessante Kundengruppen" identifizieren. Die Geschäftsleitung hat keine präzise Vorstellung, möchte aber zusätzliches Business generieren, ohne unnötige Risiken einzugehen und Verluste einzufahren.\
+\
+Die Bank denkt, dass mit Hilfe von Data Science Informationen aus dem bestehenden Kundenstamm herausgeschält werden können und liefert einen Datenextrakt aus der zentralen Datenbank. Dieser enthält Informationen zu Kunden, Produktbesitz und -nutzung (z.B. Kreditvolumen, Zahlungen, Daueraufträge und Kreditkarten), Filialnetz sowie soziodemographische Informationen.\
+\
+Die Vereinbarung mit dem Auftraggeber sieht vor:\
+\
+Konzept und Zeitplan der Analysen bis am 8. Oktober 2021 zu erstellen und vorzustellen,
+abschliessende Resultate in Form eines Berichtes zusammenzustellen mit Analysen und Codes strukturiert und dokumentiert als R-Notebook für die weitere Verwendung innerhalb der Bank zu Verfügung zu stellen.
+Im Hinblick auf ein Folgeprojekt einen Client Analytical Record aufzubereiten.
+Der analytische Auftrag besteht darin Qualität und Repräsentativität der Daten zu überprüfen, die Verteilung der einzelnen Datenattribute zu erheben, deren Veränderung über die Zeit zu analysieren, Korrelationen zwischen verschiedenen Datenattributen zu quantifizieren und zu visualisieren sowie Hypothesen hinsichtlich optimaler Produktverkauf -nutzung zu erstellen.
+
+# Daten aufbereiten und Pakete Lesen
+## Pakete Laden und Daten Einlesen
+In diesem Abschnitt werden alle Pakete geladen.
+```{r, message = FALSE, warning = FALSE}
+#Paket um die Daten einzulesen
+library(readr)
+#Pakete für Data wrangling und Visualisierung
+library(tidyverse)
+#Pakete für das HTML
+library(bookdown)
+library(knitr)
+```
+
+```{r setup, cache=TRUE}
+knitr::opts_chunk$set(fit.align = 'left', cache = TRUE, warning = FALSE, message = FALSE)
+```
+
+
+```{r}
+# Einlesen der CSV-Dateien
+
+```
+
