@@ -1,0 +1,59 @@
+---
+title: "RSY: MC2"
+subtitle: "Studiengang Data Science (HS2022), FHNW"
+author: "Jan Zwicky und Gabriel Torres"
+date: "Letzte Aktualisierungen: `r format(Sys.time(), '%B %d, %Y')`"
+output:
+  bookdown::html_document2:
+      code_folding: hide
+      toc: true
+      toc_depth: 3
+      toc_float: true
+      number_sections: true
+editor_options: 
+  chunk_output_type: console
+---
+<style>
+#TOC {
+  background-color: #F5F5F5;
+  font-size: 16px;
+}
+#header{
+  color: #708090;
+  background-color: #F5F5F5;
+  font-size: 30px;
+}
+body{
+  color: #708090;
+  background-color:#F5F5F5;
+}
+</style>
+
+# Aufgabenstellung
+
+
+# Daten aufbereiten und Pakete Lesen
+## Pakete Laden und Daten Einlesen
+In diesem Abschnitt werden alle Pakete geladen.
+```{r, message = FALSE, warning = FALSE}
+
+#Pakete für Data wrangling und Visualisierung
+library(tidyverse)
+#Pakete für das HTML
+library(bookdown)
+library(knitr)
+```
+
+```{r setup, cache=TRUE}
+knitr::opts_chunk$set(fit.align = 'left', cache = TRUE, warning = FALSE, message = FALSE)
+```
+
+
+```{r}
+# Einlesen der CSV-Dateien
+movies <- read.csv("ml-latest-small/movies.csv", sep = ",")
+links <- read.csv("ml-latest-small/links.csv", sep = ",")
+ratings <- read.csv("ml-latest-small/ratings.csv", sep = ",")
+tags <- read.csv("ml-latest-small/tags.csv", sep = ",")
+```
+
