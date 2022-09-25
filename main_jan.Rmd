@@ -39,6 +39,7 @@ In diesem Abschnitt werden alle Pakete geladen.
 
 #Pakete für Data wrangling und Visualisierung
 library(tidyverse)
+library(ggplot2)
 #Pakete für das HTML
 library(bookdown)
 library(knitr)
@@ -55,5 +56,41 @@ movies <- read.csv("ml-latest-small/movies.csv", sep = ",")
 links <- read.csv("ml-latest-small/links.csv", sep = ",")
 ratings <- read.csv("ml-latest-small/ratings.csv", sep = ",")
 tags <- read.csv("ml-latest-small/tags.csv", sep = ",")
+```
+
+Welches sind die am häufigsten geschauten Filme?
+```{r}
+most_viewed <- movies%>%
+  group_by(title,movieId,genres)%>%
+  count()%>%
+  ungroup()%>%
+  filter(n == max(n))
+```
+Welches sind die am häufigsten geschauten Genres?
+
+```{r}
+genres_sep <-movies%>%
+  separate_rows(genres,sep = "[^-a-zA-Z0-9\\s]+", convert = FALSE) %>%
+  filter(genres!= "")
+```
+
+```{r}
+ggplot(genres_sep,aes(genres))+
+  geom_bar()
+```
+```{r}
+genres_sep$value <- 1
+```
+
+
+```{r}
+new_genres <- genres_sep %>%
+  pivot_wider(names_from = genres, values_from = value) %>%
+  select(-"no genres listed")
+new_genres[is.na(new_genres)] <- 0
+```
+
+```{r}
+genres_sep$genres
 ```
 
