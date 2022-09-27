@@ -72,16 +72,88 @@ Welches sind die am häufigsten geschauten Genres?
 genres_sep <-movies%>%
   separate_rows(genres,sep = "[^-a-zA-Z0-9\\s]+", convert = FALSE) %>%
   filter(genres!= "")
-```
 
-```{r}
 ggplot(genres_sep,aes(genres))+
   geom_bar()
 ```
+Wie verteilen sich die mittleren Kundenratings pro Film
+
+```{r}
+mean_rating_movie <- ratings%>%
+  group_by(movieId)%>%
+  summarise(mean_rating = mean(rating))
+
+ggplot(mean_rating_movie, aes(mean_rating))+
+  geom_density()
+```
+
+Wie stark streuen die Ratings von individuellen Kunden?
+
+```{r}
+set.seed(100)
+sample_values = sample(1:610,4,replace = FALSE)
+
+random_user_ratings <- ratings %>%
+  filter(userId %in% sample_values)
+
+ggplot(random_user_ratings, aes(rating))+
+  geom_density(aes(color = factor(userId)))
+```
+
+Welchen Einfluss hat die Normierung der Ratings pro Kunde auf deren Verteilung? (Auch Standartisieren?)
+
+
+```{r}
+mean_rating_user <- ratings%>%
+  group_by(userId)%>%
+  summarise(mean_rating = mean(rating))
+
+mean_rating_user$mean_rating<- 3-mean_rating_user$mean_rating
+
+user_mean_rating <-left_join(ratings,mean_rating_user)
+
+user_mean_rating$normalised_rating <- user_mean_rating$rating+ user_mean_rating$mean_rating
+
+user_mean_rating<-user_mean_rating%>%
+  select(userId,movieId,normalised_rating,timestamp)
+
+```
+```{r}
+set.seed(100)
+sample_values = sample(1:610,4,replace = FALSE)
+
+random_user_ratings <- user_mean_rating %>%
+  filter(userId %in% sample_values)
+
+ggplot(random_user_ratings, aes(normalised_rating))+
+  geom_density(aes(color = factor(userId)))
+```
+
+
+Welche strukturellen Charakteristika (z.B. Sparsity) und
+Auffälligkeiten zeigt die User-Item Matrix?
+
+```{r}
+user_item<-pivot_wider(
+  ratings,
+  names_from  = userId,
+  values_from  = rating)
+```
+
+
+Analyse User Item Matrix
+
+
+https://cran.r-project.org/web/packages/rrecsys/vignettes/a1_dataset.html
+
+
+
+
+
+
 ```{r}
 genres_sep$value <- 1
 ```
-
 
 ```{r}
 new_genres <- genres_sep %>%
