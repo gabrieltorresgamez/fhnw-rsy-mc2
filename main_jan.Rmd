@@ -32,8 +32,8 @@ body{
 # Aufgabenstellung
 
 
-# Daten aufbereiten und Pakete Lesen
-## Pakete Laden und Daten Einlesen
+# Daten lesen und Pakete Lesen
+
 In diesem Abschnitt werden alle Pakete geladen.
 ```{r, message = FALSE, warning = FALSE}
 
@@ -53,34 +53,36 @@ library(knitr)
 knitr::opts_chunk$set(fit.align = 'left', cache = TRUE, warning = FALSE, message = FALSE)
 ```
 
-
 ```{r}
 # Einlesen der CSV-Dateien
 movies <- read.csv("ml-latest-small/movies.csv", sep = ",")
-links <- read.csv("ml-latest-small/links.csv", sep = ",")
+#links <- read.csv("ml-latest-small/links.csv", sep = ",")
 ratings <- read.csv("ml-latest-small/ratings.csv", sep = ",")
-tags <- read.csv("ml-latest-small/tags.csv", sep = ",")
+#tags <- read.csv("ml-latest-small/tags.csv", sep = ",")
 ```
 
-Welches sind die am häufigsten geschauten Filme?
+# EDA
+## Welches sind die am häufigsten geschauten Filme?
 ```{r}
-most_viewed <- movies%>%
-  group_by(title,movieId,genres)%>%
-  count()%>%
-  ungroup()%>%
-  filter(n == max(n))
+left_join(movies, ratings, "movieId")%>%
+group_by(title,movieId,genres) %>%
+summarise(count = n()) %>%
+arrange(desc(count)) %>% 
+head()
 ```
-Welches sind die am häufigsten geschauten Genres?
+## Welches sind die am häufigsten geschauten Genres?
 
 ```{r}
-genres_sep <-movies%>%
+movies%>%
   separate_rows(genres,sep = "[^-a-zA-Z0-9\\s]+", convert = FALSE) %>%
-  filter(genres!= "")
+  filter(genres!= "")%>%
+  group_by(genres) %>%
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>%
+  head()
 
-ggplot(genres_sep,aes(genres))+
-  geom_bar()
 ```
-Wie verteilen sich die mittleren Kundenratings pro Film
+## Wie verteilen sich die mittleren Kundenratings pro Film
 
 ```{r}
 mean_rating_movie <- ratings%>%
@@ -88,55 +90,65 @@ mean_rating_movie <- ratings%>%
   summarise(mean_rating = mean(rating))
 
 ggplot(mean_rating_movie, aes(mean_rating))+
-  geom_density()
+  geom_density()+
+  labs(title = "Verteilung der mittleren Kundenratings pro Film",
+       x = "Durchschnittliche Bewertung",
+       y = "Verteilung")+
+  theme_classic()
 ```
 
-Wie stark streuen die Ratings von individuellen Kunden?
+## Wie stark streuen die Ratings von individuellen Kunden?
 
 ```{r}
 set.seed(100)
 sample_values = sample(1:610,4,replace = FALSE)
 
-random_user_ratings <- ratings %>%
-  filter(userId %in% sample_values)
-
-ggplot(random_user_ratings, aes(rating))+
-  geom_density(aes(color = factor(userId)))
+ratings %>%
+  filter(userId %in% sample_values)%>%
+ggplot(., aes(rating))+
+  geom_density(aes(color = factor(userId)))+
+  labs(title = "Streuung von Bewertungen von Kunden",
+       subtitle = "random sample",
+       x = "Bewertung",
+       y = "Verteilung",
+       color = "User ID")+
+  theme_classic()
 ```
 
-Welchen Einfluss hat die Normierung der Ratings pro Kunde auf deren Verteilung? (Auch Standartisieren?)
+## Welchen Einfluss hat die Normierung der Ratings pro Kunde auf deren Verteilung? (Auch Standartisieren?)
 
 
 ```{r}
-mean_rating_user <- ratings%>%
+user_mean_rating <- ratings%>%
   group_by(userId)%>%
   summarise(mean_rating = mean(rating))
 
-mean_rating_user$mean_rating<- mean_rating_user$mean_rating-3
-
-user_mean_rating <-left_join(ratings,mean_rating_user)
-
+user_mean_rating <-left_join(ratings,user_mean_rating)
 user_mean_rating$normalised_rating <- user_mean_rating$rating - user_mean_rating$mean_rating
-
-user_mean_rating<-user_mean_rating%>%
-  select(userId,movieId,normalised_rating,timestamp)
 
 ```
 
 ```{r}
-set.seed(100)
-sample_values = sample(1:610,4,replace = FALSE)
-
 random_user_ratings <- user_mean_rating %>%
   filter(userId %in% sample_values)
-
-ggplot(random_user_ratings, aes(normalised_rating))+
-  geom_density(aes(color = factor(userId)))
 ```
 
 
-Welche strukturellen Charakteristika (z.B. Sparsity) und
-Auffälligkeiten zeigt die User-Item Matrix?
+```{r}
+ggplot(random_user_ratings, aes(normalised_rating,color = factor(userId)))+
+  geom_density()+
+  labs(title = "Streuung von Bewertungen von Kunden",
+       subtitle = "random sample",
+       x = "normalisierte Bewertung",
+       y = "Verteilung",
+       color ="User ID")+
+  theme_classic()
+```
+
+
+
+
+##Welche strukturellen Charakteristika (z.B. Sparsity) und Auffälligkeiten zeigt die User-Item Matrix?
 
 ```{r}
 user_item<-user_mean_rating %>%
@@ -153,54 +165,38 @@ sum(user_item == 0)/(dim(user_item)[1]*(dim(user_item)[2]))
 
 
 
-Datenreduktion
+# Datenreduktion
+Die Daten wurden auf 400 Kunden und 700 Filme reduziert.
 ```{r}
+set.seed(112)
 user_item_reduction <- user_item[sample(nrow(user_item), 400), sample(ncol(user_item), 700)]
 ```
-Mittlere Kundenratings pro Film vor und nach Datenreduktion
+## Sparsity vor und nach Datenreduktion
+Die Daten sind ähnlich Sparse wie die nicht reduzierten Daten.
+```{r}
+sum(user_item_reduction == 0)/(dim(user_item_reduction)[1]*(dim(user_item_reduction)[2]))
+```
 
+## Mittlere Kundenratings pro Film vor und nach Datenreduktion (Nicht mit 0 Normalisieren sonder mit 3 (Mittelwert))
 ```{r}
 moviemeans_reducted <-colMeans(user_item_reduction)
 moviemeans_reducted<-data.frame(moviemeans_reducted)
 ggplot(moviemeans_reducted,aes(moviemeans_reducted))+
-  geom_density()
+  geom_density()+
+  labs(title = "Streuung von durchschnittlichen Bewertung von Filmen",
+       subtitle = "reduzierter Datensatz",
+       x = "durchschnittliche Bewertung",
+       y = "Verteilung")+
+  theme_classic()
 ```
 ```{r}
 moviemeans <-rowMeans(user_item)
 moviemeans<-data.frame(moviemeans)
 ggplot(moviemeans,aes(moviemeans))+
-  geom_density()
+  geom_density()+
+  labs(title = "Streuung von durchschnittlichen Bewertung von Filmen",
+       subtitle = "kompletter Datensatz",
+       x = "durchschnittliche Bewertung",
+       y = "Verteilung")+
+  theme_classic()
 ```
-
-
-
-
-
-
-
-
-
-
-https://cran.r-project.org/web/packages/rrecsys/vignettes/a1_dataset.html
-
-```{r}
-#https://stackoverflow.com/questions/16300344/how-to-flatten-a-list-of-lists
- flattenlist <- function(x){  
-  morelists <- sapply(x, function(xprime) class(xprime)[1]=="list")
-  out <- c(x[!morelists], unlist(x[morelists], recursive=FALSE))
-  if(sum(morelists)){ 
-    Recall(out)
-  }else{
-    return(out)
-  }
-}
-```
-
-
-```{r}
-data("MovieLense")
-SparseUserMatrix = flattenlist(as(MovieLense, "list")) %>% bind_rows()
-SparseUserMatrix = as.data.frame(t(SparseUserMatrix))
-```
-
-
