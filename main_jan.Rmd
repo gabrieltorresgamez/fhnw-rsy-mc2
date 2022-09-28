@@ -38,8 +38,12 @@ In diesem Abschnitt werden alle Pakete geladen.
 ```{r, message = FALSE, warning = FALSE}
 
 #Pakete für Data wrangling und Visualisierung
+library(data.table)
 library(tidyverse)
 library(ggplot2)
+# recommender Systems
+library(coop)
+library(recommenderlab)
 #Pakete für das HTML
 library(bookdown)
 library(knitr)
@@ -108,16 +112,17 @@ mean_rating_user <- ratings%>%
   group_by(userId)%>%
   summarise(mean_rating = mean(rating))
 
-mean_rating_user$mean_rating<- 3-mean_rating_user$mean_rating
+mean_rating_user$mean_rating<- mean_rating_user$mean_rating-3
 
 user_mean_rating <-left_join(ratings,mean_rating_user)
 
-user_mean_rating$normalised_rating <- user_mean_rating$rating+ user_mean_rating$mean_rating
+user_mean_rating$normalised_rating <- user_mean_rating$rating - user_mean_rating$mean_rating
 
 user_mean_rating<-user_mean_rating%>%
   select(userId,movieId,normalised_rating,timestamp)
 
 ```
+
 ```{r}
 set.seed(100)
 sample_values = sample(1:610,4,replace = FALSE)
@@ -134,35 +139,68 @@ Welche strukturellen Charakteristika (z.B. Sparsity) und
 Auffälligkeiten zeigt die User-Item Matrix?
 
 ```{r}
-user_item<-pivot_wider(
-  ratings,
-  names_from  = userId,
-  values_from  = rating)
+user_item<-user_mean_rating %>%
+  select(movieId,userId,normalised_rating)%>%
+  pivot_wider(names_from = movieId, values_from = normalised_rating)
+user_item[is.na(user_item)] <- 0
+user_item <- user_item %>% 
+  column_to_rownames(., var = "userId")
+```
+Die User-Item Matrix ist zu 98.3 % Sparse.
+```{r}
+sum(user_item == 0)/(dim(user_item)[1]*(dim(user_item)[2]))
 ```
 
 
-Analyse User Item Matrix
+
+Datenreduktion
+```{r}
+user_item_reduction <- user_item[sample(nrow(user_item), 400), sample(ncol(user_item), 700)]
+```
+Mittlere Kundenratings pro Film vor und nach Datenreduktion
+
+```{r}
+moviemeans_reducted <-colMeans(user_item_reduction)
+moviemeans_reducted<-data.frame(moviemeans_reducted)
+ggplot(moviemeans_reducted,aes(moviemeans_reducted))+
+  geom_density()
+```
+```{r}
+moviemeans <-rowMeans(user_item)
+moviemeans<-data.frame(moviemeans)
+ggplot(moviemeans,aes(moviemeans))+
+  geom_density()
+```
+
+
+
+
+
+
+
+
 
 
 https://cran.r-project.org/web/packages/rrecsys/vignettes/a1_dataset.html
 
-
-
-
+```{r}
+#https://stackoverflow.com/questions/16300344/how-to-flatten-a-list-of-lists
+ flattenlist <- function(x){  
+  morelists <- sapply(x, function(xprime) class(xprime)[1]=="list")
+  out <- c(x[!morelists], unlist(x[morelists], recursive=FALSE))
+  if(sum(morelists)){ 
+    Recall(out)
+  }else{
+    return(out)
+  }
+}
+```
 
 
 ```{r}
-genres_sep$value <- 1
+data("MovieLense")
+SparseUserMatrix = flattenlist(as(MovieLense, "list")) %>% bind_rows()
+SparseUserMatrix = as.data.frame(t(SparseUserMatrix))
 ```
 
-```{r}
-new_genres <- genres_sep %>%
-  pivot_wider(names_from = genres, values_from = value) %>%
-  select(-"no genres listed")
-new_genres[is.na(new_genres)] <- 0
-```
-
-```{r}
-genres_sep$genres
-```
 
