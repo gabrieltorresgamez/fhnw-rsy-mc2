@@ -36,7 +36,7 @@ body{
 ## MovieLense Daten einlesen und Pakete Laden
 In diesem Abschnitt werden alle Pakete geladen.
 ```{r, message = FALSE, warning = FALSE}
-
+library(recommenderlab)
 #Pakete für Data wrangling und Visualisierung
 library(tidyverse)
 #Pakete für das HTML
@@ -164,3 +164,25 @@ nrow(unique(user_genres_complete,margin=1))
 ```{r}
 nrow(unique(user_genres,margin=1))
 ```
+
+# Ähnlichkeit von Nutzern und Filmen
+
+## Cosinus-Ähnlichkeit zwischen User-Genre - und Movie-Genre-Matrix berechnen.
+```{r}
+# besprechen noch unklar
+user_genres <- as(user_genres, "binaryRatingMatrix")
+similarity(user_genres,method ="cosine")
+```
+
+## Dimension der Matrix der Cosinus-Ähnlichkeiten von Nutzern und Filmen prüfen uns ausgeben.
+
+```{r}
+
+```
+
+## 5-Zahlen Statistik für Matrix der Cosinus-Ähnlichkeiten prüfen uns ausgeben.
+
+```{r}
+
+```
+
