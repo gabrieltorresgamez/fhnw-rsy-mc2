@@ -32,28 +32,149 @@ body{
 # Aufgabenstellung
 
 
-# Daten aufbereiten und Pakete Lesen
-## Pakete Laden und Daten Einlesen
+# Erzeugung von Film- & Nutzerprofilen
+## MovieLense Daten einlesen und Pakete Laden
 In diesem Abschnitt werden alle Pakete geladen.
 ```{r, message = FALSE, warning = FALSE}
-
-#Pakete für Data wrangling und Visualisierung
+library(recommenderlab)
+# Pakete für Data wrangling und Visualisierung
 library(tidyverse)
-#Pakete für das HTML
+# Pakete für das HTML
 library(bookdown)
 library(knitr)
 ```
 
 ```{r setup, cache=TRUE}
-knitr::opts_chunk$set(fit.align = 'left', cache = TRUE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(fit.align = "left", cache = TRUE, warning = FALSE, message = FALSE)
 ```
 
 
 ```{r}
 # Einlesen der CSV-Dateien
 movies <- read.csv("ml-latest-small/movies.csv", sep = ",")
-links <- read.csv("ml-latest-small/links.csv", sep = ",")
+# links <- read.csv("ml-latest-small/links.csv", sep = ",")
 ratings <- read.csv("ml-latest-small/ratings.csv", sep = ",")
-tags <- read.csv("ml-latest-small/tags.csv", sep = ",")
+# tags <- read.csv("ml-latest-small/tags.csv", sep = ",")
+```
+## Zusatz der Standartisierung
+```{r}
+norm_ratings <- ratings %>%
+  group_by(userId) %>%
+  summarise(mean_rating = mean(rating), sd_rating = sd(rating)) %>%
+  full_join(., ratings, by = "userId")
+
+norm_ratings$z_rating <- (norm_ratings$rating - norm_ratings$mean_rating) /
+  norm_ratings$sd_rating
 ```
 
+## Binäre User-Liked-Items Matrix für alle Nutzer erzeugen.
+```{r}
+norm_ratings$liked <- norm_ratings$z_rating > 0
+
+user_item <- as.matrix(left_join(movies, norm_ratings, by = "movieId") %>%
+  select(movieId, userId, liked) %>%
+  pivot_wider(names_from = movieId, values_from = liked) %>%
+  filter(is.na(userId) == FALSE) %>%
+  select(!userId))
+```
+Dimension der User-Liked-Items Matrix prüfen und ausgeben.
+```{r}
+dim(user_item)
+```
+
+## Movie-Genre Matrix für alle Filme erzeugen. 
+Aufpassen movieId geht verloren
+IMAX ist in der Datenbeschreibung nicht vorhanden.(https://files.grouplens.org/datasets/movielens/ml-latest-small-README.html)
+
+```{r}
+movie_genres <- as.matrix(movies %>%
+  separate_rows(genres, sep = "\\|", convert = FALSE) %>%
+  replace(. == "", "no genres listed") %>%
+  mutate(value = TRUE) %>%
+  select(movieId, genres, value) %>%
+  pivot_wider(names_from = genres, values_from = value, values_fill = FALSE) %>%
+  column_to_rownames("movieId"))
+View(movie_genres)
+movie_genres[is.na(movie_genres)] <- 0
+```
+## Dimension der Movie-Genre Matrix prüfen und ausgeben.
+```{r}
+dim(movie_genres)
+```
+## Anzahl unterschiedlicher Filmprofile bestimmen und visualisieren.(später nochmals)
+
+```{r}
+movie_profile <- movies %>%
+  group_by(genres) %>%
+  summarise(Anzahl_Filme = n())
+
+number_profile <- nrow(movie_profile)
+sum_bottom <- movie_profile %>%
+  arrange(Anzahl_Filme) %>%
+  head(number_profile - 30) %>%
+  summarise(genres = "combined", Anzahl_Filme = sum(Anzahl_Filme))
+
+different_movies <- rbind(
+  movie_profile %>%
+    arrange(desc(Anzahl_Filme)) %>%
+    head(30),
+  sum_bottom
+) %>%
+  mutate(genres = fct_reorder(genres, Anzahl_Filme))
+
+ggplot(different_movies, aes(Anzahl_Filme, factor(genres))) +
+  geom_point()
+```
+
+## Nutzerprofile im Genre-Vektorraum erzeugen.
+```{r}
+user_genres <- user_item %*% movie_genres
+```
+
+## Dimension der User-Genre-Profil Matrix prüfen und ausgeben.
+```{r}
+dim(user_genres)
+```
+
+## Anzahl unterschiedlicher Nutzerprofile bestimmen
+
+### Stärke der Genre-Kombination vollständig
+Berechnungen wiederhohlen
+```{r}
+user_item_complete <- as.matrix(left_join(movies, norm_ratings, by = "movieId") %>%
+  select(movieId, userId, z_rating) %>%
+  pivot_wider(names_from = movieId, values_from = z_rating) %>%
+  filter(is.na(userId) == FALSE) %>%
+  select(!userId))
+user_item_complete[is.na(user_item_complete)] <- 0
+
+user_genres_complete <- user_item_complete %*% movie_genres
+
+nrow(unique(user_genres_complete, margin = 1))
+```
+### Stärke der Genre-Kombination binär
+
+```{r}
+nrow(unique(user_genres, margin = 1))
+```
+
+# Ähnlichkeit von Nutzern und Filmen
+
+## Cosinus-Ähnlichkeit zwischen User-Genre - und Movie-Genre-Matrix berechnen.
+```{r}
+# besprechen noch unklar
+user_genres <- as(user_genres, "binaryRatingMatrix")
+similarity(user_genres, method = "cosine")
+```
+
+## Dimension der Matrix der Cosinus-Ähnlichkeiten von Nutzern und Filmen prüfen uns ausgeben.
+
+```{r}
+
+```
+
+## 5-Zahlen Statistik für Matrix der Cosinus-Ähnlichkeiten prüfen uns ausgeben.
+
+```{r}
+
+```
