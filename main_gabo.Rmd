@@ -29,126 +29,295 @@ body{
 }
 </style>
 
-# Aufgabenstellung
-
-
-# Erzeugung von Film- & Nutzerprofilen
-## MovieLense Daten einlesen und Pakete Laden
-In diesem Abschnitt werden alle Pakete geladen.
-```{r, message = FALSE, warning = FALSE}
-library(recommenderlab)
-# Pakete für Data wrangling und Visualisierung
+# Daten aufbereiten und Pakete Lesen
+## Pakete laden und Daten einlesen
+### Pakete laden
+```{r setup, cache = TRUE, message = FALSE, warning = FALSE}
+# Pakete für Data Wrangling und Visualisierung
 library(tidyverse)
+
 # Pakete für das HTML
 library(bookdown)
 library(knitr)
+
+# Recommenderlab
+library(recommenderlab)
 ```
 
-```{r setup, cache=TRUE}
+###  Konfiguration der Pakete
+```{r}
 knitr::opts_chunk$set(fit.align = "left", cache = TRUE, warning = FALSE, message = FALSE)
+set.seed(100)
 ```
 
+### Daten einlesen und Samples erstellen
+```{r}
+movies1 <- read.csv("ml-latest-small/movies.csv", sep = ",")
+links1 <- read.csv("ml-latest-small/links.csv", sep = ",")
+ratings1 <- read.csv("ml-latest-small/ratings.csv", sep = ",")
+tags1 <- read.csv("ml-latest-small/tags.csv", sep = ",")
 
-```{r}
-# Einlesen der CSV-Dateien
-movies <- read.csv("ml-latest-small/movies.csv", sep = ",")
-# links <- read.csv("ml-latest-small/links.csv", sep = ",")
-ratings <- read.csv("ml-latest-small/ratings.csv", sep = ",")
-# tags <- read.csv("ml-latest-small/tags.csv", sep = ",")
+# Sample von 70%
+set.seed(69)
+movies2 <- movies1 %>% slice_sample(prop = 0.7)
+links2 <- subset(links1, movieId %in% movies2$movieId)
+ratings2 <- subset(ratings1, movieId %in% movies2$movieId) %>% slice_sample(prop = 0.7)
+tags2 <- subset(tags1, movieId %in% movies2$movieId)
+
+# 2ter Sample von 70%
+set.seed(100)
+movies1 <- movies1 %>% slice_sample(prop = 0.7)
+links1 <- subset(links1, movieId %in% movies1$movieId)
+ratings1 <- subset(ratings1, movieId %in% movies1$movieId) %>% slice_sample(prop = 0.7)
+tags1 <- subset(tags1, movieId %in% movies1$movieId)
 ```
-## Zusatz der Standartisierung
+
+## Vorbereitung der Daten
+### Sample 1
 ```{r}
-norm_ratings <- ratings %>%
+norm_ratings1 <- ratings1 %>%
   group_by(userId) %>%
   summarise(mean_rating = mean(rating), sd_rating = sd(rating)) %>%
-  full_join(., ratings, by = "userId")
+  full_join(., ratings1, by = "userId")
 
-norm_ratings$z_rating <- (norm_ratings$rating - norm_ratings$mean_rating) /
-  norm_ratings$sd_rating
+norm_ratings1$z_rating <- (norm_ratings1$rating - norm_ratings1$mean_rating) /
+  norm_ratings1$sd_rating
+
+user_item1 <- norm_ratings1 %>%
+  select(movieId, userId, z_rating) %>%
+  pivot_wider(names_from = movieId, values_from = z_rating) %>%
+  column_to_rownames(var = "userId")
 ```
 
-## Binäre User-Liked-Items Matrix für alle Nutzer erzeugen.
+### Sample 2
 ```{r}
-norm_ratings$liked <- norm_ratings$z_rating > 0
+norm_ratings2 <- ratings2 %>%
+  group_by(userId) %>%
+  summarise(mean_rating = mean(rating), sd_rating = sd(rating)) %>%
+  full_join(., ratings2, by = "userId")
 
-user_item <- as.matrix(left_join(movies, norm_ratings, by = "movieId") %>%
-  select(movieId, userId, liked) %>%
-  pivot_wider(names_from = movieId, values_from = liked) %>%
-  filter(is.na(userId) == FALSE) %>%
-  select(!userId))
+norm_ratings2$z_rating <- (norm_ratings2$rating - norm_ratings2$mean_rating) /
+  norm_ratings2$sd_rating
+
+user_item2 <- norm_ratings2 %>%
+  select(movieId, userId, z_rating) %>%
+  pivot_wider(names_from = movieId, values_from = z_rating) %>%
+  column_to_rownames(var = "userId")
 ```
-Dimension der User-Liked-Items Matrix prüfen und ausgeben.
+
+# Aufgaben
+## Erzeugung von Film- & Nutzerprofilen
+### Binäre User-Liked-Items Matrix f̈ür alle Nutzer erzeugen.
 ```{r}
-dim(user_item)
+user_item_binary1 <- user_item1 > 0
+user_item_binary2 <- user_item2 > 0
 ```
 
-## Movie-Genre Matrix für alle Filme erzeugen. 
-Aufpassen movieId geht verloren
-IMAX ist in der Datenbeschreibung nicht vorhanden.(https://files.grouplens.org/datasets/movielens/ml-latest-small-README.html)
-
+### Dimension der User-Liked-Items Matrix prüfen und ausgeben.
 ```{r}
-movie_genres <- as.matrix(movies %>%
+dim(user_item_binary1)
+dim(user_item_binary2)
+```
+
+### Movie-Genre Matrix für alle Filme erzeugen. 
+```{r}
+movie_genres1 <- as.matrix(movies1 %>%
   separate_rows(genres, sep = "\\|", convert = FALSE) %>%
   replace(. == "", "no genres listed") %>%
   mutate(value = TRUE) %>%
   select(movieId, genres, value) %>%
   pivot_wider(names_from = genres, values_from = value, values_fill = FALSE) %>%
   column_to_rownames("movieId"))
-View(movie_genres)
-movie_genres[is.na(movie_genres)] <- 0
+movies_genres_rated1 <- movie_genres1[colnames(user_item_binary1), ]
+
+movie_genres2 <- as.matrix(movies2 %>%
+  separate_rows(genres, sep = "\\|", convert = FALSE) %>%
+  replace(. == "", "no genres listed") %>%
+  mutate(value = TRUE) %>%
+  select(movieId, genres, value) %>%
+  pivot_wider(names_from = genres, values_from = value, values_fill = FALSE) %>%
+  column_to_rownames("movieId"))
+movies_genres_rated2 <- movie_genres2[colnames(user_item_binary2), ]
 ```
+
 ## Dimension der Movie-Genre Matrix prüfen und ausgeben.
+### All movies
 ```{r}
-dim(movie_genres)
+dim(movie_genres1)
+dim(movie_genres2)
 ```
-## Anzahl unterschiedlicher Filmprofile bestimmen und visualisieren.(später nochmals)
+
+### Only rated movies
+```{r}
+dim(movies_genres_rated1)
+dim(movies_genres_rated2)
+```
+
+## Anzahl unterschiedlicher Filmprofile bestimmen und visualisieren.
+```{r}
+movie_profile1 <- movie_genres1 %>%
+  colSums() %>%
+  as.list()
+movie_profile1 <- tibble(genre = names(movie_profile1), count = unname(unlist(movie_profile1)))
+
+movie_profile2 <- movie_genres2 %>%
+  colSums() %>%
+  as.list()
+movie_profile2 <- tibble(genre = names(movie_profile2), count = unname(unlist(movie_profile2)))
+```
 
 ```{r}
-movie_profile <- movies %>%
+ggplot(movie_profile1, aes(count, genre)) +
+  geom_col()
+
+ggplot(movie_profile2, aes(count, genre)) +
+  geom_col()
+```
+
+### Alternativ mit Kombinationen
+```{r}
+movie_profile1 <- movies1 %>%
   group_by(genres) %>%
   summarise(Anzahl_Filme = n())
 
-number_profile <- nrow(movie_profile)
-sum_bottom <- movie_profile %>%
+number_profile1 <- nrow(movie_profile1)
+sum_bottom1 <- movie_profile1 %>%
   arrange(Anzahl_Filme) %>%
-  head(number_profile - 30) %>%
+  head(number_profile1 - 30) %>%
   summarise(genres = "combined", Anzahl_Filme = sum(Anzahl_Filme))
 
-different_movies <- rbind(
-  movie_profile %>%
+different_movies1 <- rbind(
+  movie_profile1 %>%
     arrange(desc(Anzahl_Filme)) %>%
     head(30),
-  sum_bottom
+  sum_bottom1
 ) %>%
   mutate(genres = fct_reorder(genres, Anzahl_Filme))
 
-ggplot(different_movies, aes(Anzahl_Filme, factor(genres))) +
+ggplot(different_movies1, aes(Anzahl_Filme, factor(genres))) +
+  geom_point()
+```
+
+```{r}
+movie_profile2 <- movies2 %>%
+  group_by(genres) %>%
+  summarise(Anzahl_Filme = n())
+
+number_profile2 <- nrow(movie_profile2)
+sum_bottom2 <- movie_profile2 %>%
+  arrange(Anzahl_Filme) %>%
+  head(number_profile2 - 30) %>%
+  summarise(genres = "combined", Anzahl_Filme = sum(Anzahl_Filme))
+
+different_movies2 <- rbind(
+  movie_profile2 %>%
+    arrange(desc(Anzahl_Filme)) %>%
+    head(30),
+  sum_bottom2
+) %>%
+  mutate(genres = fct_reorder(genres, Anzahl_Filme))
+
+ggplot(different_movies2, aes(Anzahl_Filme, factor(genres))) +
   geom_point()
 ```
 
 ## Nutzerprofile im Genre-Vektorraum erzeugen.
 ```{r}
-user_genres <- user_item %*% movie_genres
+# Variablen zur Berechnung
+num_user <- dim(user_item_binary1)[1]
+num_genres <- dim(movie_genres1)[2]
+num_movies <- dim(user_item_binary1)[2]
+
+# Intitialisierung der Matrix
+user_profiles1 <- matrix(0, num_user, num_genres)
+colnames(user_profiles1) <- colnames(movie_genres1)
+rownames(user_profiles1) <- rownames(user_item_binary1)
+
+# Jeder User wird einzeln berechnet.
+for (user_index in rownames(user_profiles1)) {
+  # User row wird gespeichert
+  user <- user_item_binary1[user_index, ]
+  # Anzahl der Bewertungen wird gespeichert
+  num_ratings <- sum(!is.na(user))
+  # Array mit dem index der liked movies wird erstellt
+  liked_movies <- names(user[which(user == T)])
+  # Häufigkeit der Genre likes wird berechnet
+  if (length(liked_movies) == 1) {
+    user_profiles1[user_index, ] <- movie_genres1[liked_movies, ] / num_ratings
+  } else {
+    user_profiles1[user_index, ] <- colSums(movie_genres1[liked_movies, ]) / num_ratings
+  }
+}
+
+# remove clutter
+remove(liked_movies)
+remove(num_ratings)
+remove(num_genres)
+remove(num_movies)
+remove(user_index)
+remove(num_user)
+remove(user)
+```
+
+```{r}
+# Variablen zur Berechnung
+num_user <- dim(user_item_binary2)[1]
+num_genres <- dim(movie_genres2)[2]
+num_movies <- dim(user_item_binary2)[2]
+
+# Intitialisierung der Matrix
+user_profiles2 <- matrix(0, num_user, num_genres)
+colnames(user_profiles2) <- colnames(movie_genres2)
+rownames(user_profiles2) <- rownames(user_item_binary2)
+
+# Jeder User wird einzeln berechnet.
+for (user_index in rownames(user_profiles2)) {
+  # User row wird gespeichert
+  user <- user_item_binary2[user_index, ]
+  # Anzahl der Bewertungen wird gespeichert
+  num_ratings <- sum(!is.na(user))
+  # Array mit dem index der liked movies wird erstellt
+  liked_movies <- names(user[which(user == T)])
+  # Häufigkeit der Genre likes wird berechnet
+  if (length(liked_movies) == 1) {
+    user_profiles2[user_index, ] <- movie_genres2[liked_movies, ] / num_ratings
+  } else {
+    user_profiles2[user_index, ] <- colSums(movie_genres2[liked_movies, ]) / num_ratings
+  }
+}
+
+# remove clutter
+remove(liked_movies)
+remove(num_ratings)
+remove(num_genres)
+remove(num_movies)
+remove(user_index)
+remove(num_user)
+remove(user)
 ```
 
 ## Dimension der User-Genre-Profil Matrix prüfen und ausgeben.
 ```{r}
-dim(user_genres)
+dim(user_profiles1)
+dim(user_profiles2)
 ```
 
-## Anzahl unterschiedlicher Nutzerprofile bestimmen
-
-### Stärke der Genre-Kombination vollständig
-Berechnungen wiederhohlen
+### Stärke der Genre-Kombination vollständig (Berechnungen wiederhohlen)
 ```{r}
-user_item_complete <- as.matrix(left_join(movies, norm_ratings, by = "movieId") %>%
+
+
+äuääääääää
+
+
+
+user_item_complete <- as.matrix(left_join(movies1, norm_ratings1, by = "movieId") %>%
   select(movieId, userId, z_rating) %>%
   pivot_wider(names_from = movieId, values_from = z_rating) %>%
   filter(is.na(userId) == FALSE) %>%
   select(!userId))
 user_item_complete[is.na(user_item_complete)] <- 0
 
-user_genres_complete <- user_item_complete %*% movie_genres
+user_genres_complete <- user_item_complete %*% movie_genres1
 
 nrow(unique(user_genres_complete, margin = 1))
 ```
