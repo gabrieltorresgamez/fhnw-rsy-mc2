@@ -341,12 +341,67 @@ ggplot(min_sim_n100, aes(x)) +
 
 ### Top-20 Empfehlungen für Nutzer “5”, “25”, “50”, “150” visualisieren.
 ```{r}
-# number of recommendations
-top20[c(5, 25, 50, 150),]
+recommendations_genres <- function(n, users) {
+  mean_genres <- matrix(0, length(users), length(colnames(movies_genres)))
+  colnames(mean_genres) <- colnames(movies_genres)
+  rownames(mean_genres) <- users
 
+  topn <- get_top_n_id(n, recommendations)
+  for (user in users) {
+    mean_genres[as.character(user), ] <- colSums(movies_genres[topn[user, ], ]) / n
+  }
+  return(as.data.frame(mean_genres))
+}
+
+temp <- recommendations_genres(20, c(5, 25, 50, 150))
+temp$id <- rownames(temp)
+temp$type <- "prediction"
+temp <- temp %>% pivot_longer(cols = 1:length(colnames(movies_genres)))
+
+temp2 <- as.data.frame(users_profiles[c(5, 25, 50, 150), ])
+temp2$id <- rownames(temp2)
+temp2$type <- "user profile"
+temp2 <- temp2 %>% pivot_longer(cols = 1:length(colnames(movies_genres)))
+
+temp <- union(temp, temp2)
+
+ggplot(temp, aes(x = value, y = name)) +
+  geom_line(aes(group = name), alpha = 0.3) +
+  geom_point(aes(color = type)) +
+  facet_wrap(as.numeric(id) ~ ., ncol = 4)
+
+remove(temp, temp2)
 ```
 
 ### Für Nutzer “133” und “555” Profil mit Top-N Empfehlungen für N = 20, 30, 40, 50 analysieren, visualisieren und diskutieren.
 ```{r}
 # cleveland plot
+temp <- recommendations_genres(20, c(133, 555))
+temp$n <- "20"
+temp2 <- recommendations_genres(30, c(133, 555))
+temp2$n <- "30"
+temp3 <- recommendations_genres(40, c(133, 555))
+temp3$n <- "40"
+temp4 <- recommendations_genres(50, c(133, 555))
+temp4$n <- "50"
+
+temp <- union(temp, union(temp2, union(temp3, temp4)))
+temp$id <- c(133, 555, 133, 555, 133, 555, 133, 555)
+temp$type <- "prediction"
+temp <- temp %>% pivot_longer(cols = 1:length(colnames(movies_genres)))
+
+temp5 <- as.data.frame(users_profiles[c(133, 555), ])
+temp5$id <- c(133, 555)
+temp5$type <- "user profile"
+temp5$n <- "user profile"
+temp5 <- temp5 %>% pivot_longer(cols = 1:length(colnames(movies_genres)))
+
+temp <- union(temp, temp5)
+
+ggplot(temp, aes(x = value, y = name)) +
+  geom_line(aes(group = name), alpha = 0.3) +
+  geom_point(aes(color = n)) +
+  facet_wrap(as.numeric(id) ~ ., nrow = 2)
+
+remove(temp, temp2, temp3, temp4, temp5)
 ```
