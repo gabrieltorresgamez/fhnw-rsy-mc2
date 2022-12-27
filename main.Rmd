@@ -122,7 +122,7 @@ Die Matrix beinhaltet jetzt alle 9742 Filme und 20 Genres.
 dim(movies_genres_rated)
 ```
 
-Diese Matrix beinhaltet alle bewerteten Filme (9724) und 610 User.
+Diese Matrix beinhaltet alle bewerteten Filme (9724) und 20 Genres.
 
 ## Anzahl unterschiedlicher Filmprofile bestimmen und visualisieren.
 Wenn man visualisiert, wie oft ein Genre im Movie Datensatz vorkommt, erhält man folgenden Plot:
@@ -139,7 +139,7 @@ ggplot(movies_profiles, aes(count, genre)) +
   theme_minimal()
 ```
 
-Man erkennt, dass Drama und Comedy Filme am häufigsten vorkommen.
+Man erkennt, dass Drama und Comedy Filme am häufigsten vorkommen. Zudem erkennt man, dass bei kaum Filme kein Genre vorhanden ist.
 
 ## Alternativ mit Kombinationen
 Falls man alternativ die Anzahl Filme pro Kombination von Genres visualisiert, sieht das so aus:
@@ -168,7 +168,7 @@ ggplot(different_movies, aes(Anzahl_Filme, factor(genres))) +
   theme_minimal()
 ```
 
-Hier erkennt man, dass es nicht sehr viele Genrekombinationen gibt, welche sehr häufig vorkommen. Die meisten Kombinationen kommen nur sehr selten vor. Die häufigste Kombination ist Drama und Comedy.
+Hier erkennt man, dass es nicht sehr viele Genrekombinationen gibt, welche sehr häufig vorkommen. Die meisten Kombinationen kommen nur sehr selten vor. Die häufigste "Kombination" kommt als Genre einzeln vor und ist Drama und Comedy.
 
 ## Nutzerprofile im Genre-Vektorraum erzeugen.
 ```{r}
@@ -248,7 +248,8 @@ Anschliessend rechnen wir die Ähnlichkeit aus.
 dim(similarity_users_movies)
 ```
 
-Die Matrix beinhaltet 610 User und 9742 Filme.
+Die Matrix beinhaltet 610 User und 9742 Filme. Dies macht Sinn so, da es 9742 Filme und 610 User gibt. Man erkennt schon einen Vorteil von Content-Based Recommender. Nur 9724 Filme haben ein Rating. Trotzdem können Ähnlichkeiten von allen Filmen berechnet werden.
+
 
 ## 5-Zahlen Statistik für Matrix der Cosinus-Ähnlichkeiten prüfen und ausgeben.
 ```{r}
