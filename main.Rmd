@@ -61,15 +61,19 @@ Zur Bearbeitung dieser Minichallenge brauchen wir nur den Movies und Ratings Dat
 norm_ratings <- ratings %>%
   group_by(userId) %>%
   summarise(mean_rating = mean(rating), sd_rating = sd(rating)) %>%
-  full_join(., ratings, by = "userId")
+  full_join(., ratings, by = "userId") %>% 
+  full_join(., movies, by = "movieId")
 
 norm_ratings$z_rating <- (norm_ratings$rating - norm_ratings$mean_rating) /
   norm_ratings$sd_rating
+
+norm_ratings$z_rating[is.na(norm_ratings$z_rating)] <- 0
 
 # User Movie Bewertungsmatrix erstellen
 users_items <- norm_ratings %>%
   select(movieId, userId, z_rating) %>%
   pivot_wider(names_from = movieId, values_from = z_rating) %>%
+  filter(!is.na(userId)) %>% 
   column_to_rownames(var = "userId")
 
 # Sortieren und nur bewertete Filme mitgeben
@@ -92,7 +96,7 @@ dim(users_items)
 dim(users_items_binary)
 ```
 
-Die Matrizen beinhalten 610 User und 9724 Movies.
+Die Matrizen beinhalten 610 User und 9742 Movies.
 
 ## Movie-Genre Matrix für alle Filme erzeugen. 
 ```{r}
@@ -122,7 +126,7 @@ Die Matrix beinhaltet jetzt alle 9742 Filme und 20 Genres.
 dim(movies_genres_rated)
 ```
 
-Diese Matrix beinhaltet alle bewerteten Filme (9724) und 20 Genres.
+Diese Matrix beinhaltet alle bewerteten Filme (9742) und 20 Genres.
 
 ## Anzahl unterschiedlicher Filmprofile bestimmen und visualisieren.
 Wenn man visualisiert, wie oft ein Genre im Movie Datensatz vorkommt, erhält man folgenden Plot:
@@ -248,7 +252,7 @@ Anschliessend rechnen wir die Ähnlichkeit aus.
 dim(similarity_users_movies)
 ```
 
-Die Matrix beinhaltet 610 User und 9742 Filme. Dies macht Sinn so, da es 9742 Filme und 610 User gibt. Man erkennt schon einen Vorteil von Content-Based Recommender. Nur 9724 Filme haben ein Rating. Trotzdem können Ähnlichkeiten von allen Filmen berechnet werden.
+Die Matrix beinhaltet 610 User und 9742 Filme. Dies macht Sinn so, da es 9742 Filme und 610 User gibt. Man erkennt schon einen Vorteil von Content-Based Recommender. Nur 9742 Filme haben ein Rating. Trotzdem können Ähnlichkeiten von allen Filmen berechnet werden.
 
 
 ## 5-Zahlen Statistik für Matrix der Cosinus-Ähnlichkeiten prüfen und ausgeben.
@@ -317,7 +321,7 @@ Alle vier User haben mehr als 9400 Filme nicht bewertet.
 five_stats(neg_deduction)
 ```
 
-Die Matrix ist zum grössten Teil mit NA Werten gefüllt, was auch an der 5-Zahlen Statistik ersichtlich ist.
+Die Matrix ist zum grössten Teil mit 1er Werten gefüllt, was auch an der 5-Zahlen Statistik ersichtlich ist. Es gibt keine NA Werte.
 
 # Top-N Empfehlungen
 ## Matrix für Bewertung aller Filme durch element-weise Multiplikation der Matrix der Cosinus-Ähnlichkeiten von Nutzern und Filmen und “Negativabzug” der User-Items Matrix erzeugen.
@@ -341,7 +345,7 @@ Der Unterschied zur vorherigen Ähnlichkeitsmatrix ist, dass schon bewertete Fil
 dim(recommendations)
 ```
 
-Die Matrix hat 610 User und 9724 Filme.
+Die Matrix hat 610 User und 9742 Filme.
 
 ## Top-20 Listen extrahieren und Länge der Listen pro Nutzer prüfen.
 ```{r}
@@ -369,6 +373,7 @@ Hier haben wir Funktionen geschrieben, welche die Top-N Listen generieren.
 Die Funktion get_top_n_id gibt die Top-N Filme als ID zurück, die Funktion get_top_n_sim gibt die Top-N Filme als Ähnlichkeit zurück.
 
 ## Verteilung der minimalen Ähnlichkeit für Top-N Listen für N = 10, 20, 50, 100 für alle Nutzer visuell vergleichen.
+Man könnte sich vorstellen, dass desto mehr Filme empfohlen werden, desto weniger Ähnlich sind die neuen Filme zum User. Deswegen visualisieren wir in den nachfolgenden Plot die minimale Ähnlichkeit für jeden Benutzer für die Top-N Listen Grössen von 10, 20, 50 und 100.
 ```{r}
 # Generierung der Top-N Listen
 min_sim_n10 <- data_frame(x = get_top_n_sim(10, recommendations)[, 10])
@@ -383,21 +388,30 @@ ggplot(min_sim_n10, aes(x)) +
   ylim(0, 35) +
   labs(title = "Verteilung der minimalen Ähnlichkeit der Top-10 Recommendations aller User", x = "minimale Ähnlichkeit", y = "Anzahl") +
   theme_minimal()
+```
 
+Hier befinden sich die Werte im Bereich zwischen 0.75 und 1.
+```{r}
 ggplot(min_sim_n20, aes(x)) +
   geom_histogram(binwidth = 0.005, na.rm = TRUE) +
   xlim(0, 1) +
   ylim(0, 35) +
   labs(title = "Verteilung der minimalen Ähnlichkeit der Top-20 Recommendations aller User", x = "minimale Ähnlichkeit", y = "Anzahl") +
   theme_minimal()
+```
 
+Hier bekommen schon mehrere User Filme mit einer Ähnlichkeit von weniger als 0.75 empfohlen. Jedoch ist es noch kein grosser Unterschied.
+```{r}
 ggplot(min_sim_n50, aes(x)) +
   geom_histogram(binwidth = 0.005, na.rm = TRUE) +
   xlim(0, 1) +
   ylim(0, 35) +
   labs(title = "Verteilung der minimalen Ähnlichkeit der Top-50 Recommendations aller User", x = "minimale Ähnlichkeit", y = "Anzahl") +
   theme_minimal()
+```
 
+Bei diesem Plot werden schon vielen Usern Filme mit einer Ähnlichkeit von weniger als 0.75 empfohlen. Wo beim ersten Plot die Verteilung recht normalverteilt aussah, sieht die Verteilung hier etwas rechtsschief aus.
+```{r}
 ggplot(min_sim_n100, aes(x)) +
   geom_histogram(binwidth = 0.005, na.rm = TRUE) +
   xlim(0, 1) +
@@ -406,7 +420,24 @@ ggplot(min_sim_n100, aes(x)) +
   theme_minimal()
 ```
 
-Desto mehr Filme wir in die Top-N Liste aufnehmen, desto näher rückt die minimale Ähnlichkeiten in Richtung 0.
+Bei der Top-100 Liste sieht die Verteilung jetzt viel rechtsschiefer aus. Wo vorher nur wenige Filme mit einer Ähnlichkeit von unter 0.75 empfohlen wurden, sind es hier schon ein grosser Teil der Daten. 
+
+Um eine übersichtlichere Darstellung zu haben, plotten wir die Werte auf Boxplots.
+```{r}
+min_sim_n10$n <- 10
+min_sim_n20$n <- 20
+min_sim_n50$n <- 50
+min_sim_n100$n <- 100
+min_sim <- union(min_sim_n10, union(min_sim_n20, union(min_sim_n50, min_sim_n100)))
+min_sim$n <- as.factor(min_sim$n)
+
+ggplot() +
+  geom_boxplot(data = min_sim, aes(x, fill = n), na.rm = TRUE, alpha = 0.5) +
+  labs(title = "Verteilung der minimalen Ähnlichkeit der Top-N Recommendations aller User", x = "minimale Ähnlichkeit", y = "Anzahl", fill = "Top-N") +
+  theme_minimal()
+```
+
+Hier erkennt man die Verschiebung der Quartale und der Mittelwerte gut.
 
 ## Top-20 Empfehlungen für Nutzer “5”, “25”, “50”, “150” visualisieren.
 ```{r}
